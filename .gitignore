@@ -1,0 +1,11 @@
+STM32CubeIDE/Debug
+STM32CubeIDE/Release
+.settings
+.vscode
+*.launch
+.gdbinit
+settings
+Project.dep
+Project.ewt
+STM32N657xx/
+build

@@ -1,0 +1,9 @@
+[submodule "STM32Cube_FW_N6"]
+	path = STM32Cube_FW_N6
+	url = https://github.com/STMicroelectronics/STM32CubeN6.git
+[submodule "Middlewares/Camera_Middleware"]
+	path = Middlewares/Camera_Middleware
+	url = https://github.com/STMicroelectronics/stm32-mw-camera.git
+[submodule "Middlewares/ISP_Library"]
+	path = Middlewares/ISP_Library
+	url = https://github.com/STMicroelectronics/stm32-mw-isp.git
