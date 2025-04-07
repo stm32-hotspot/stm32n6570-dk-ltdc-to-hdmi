@@ -22,12 +22,58 @@
 #include "stm32n6570_discovery.h"
 #include "stm32_lcd.h"
 #include "stm32_lcd_ex.h"
+#include "hdmi.h"
 #include "main.h"
 #include <stdio.h>
 #include <assert.h>
 
+/* Choose resolution (select one) */
+/* HDMI 24 bits rgb 4:4:4 */
+/* IC16 input clock 600MHz */
+/* https://tomverbeure.github.io/video_timings_calculator */
+#if 0 /* 480x480 @ 50Hz 1:1 ***************************************************/
+#define LCD_BG_WIDTH  480U
+#define LCD_BG_HEIGHT 480U
+#define HDMI_HFP   16
+#define HDMI_HSYNC 40
+#define HDMI_HBP   56
+#define HDMI_VFP   3
+#define HDMI_VSYNC 10
+#define HDMI_VBP   6
+#define HDMI_IC16_CLKDIV 41 /* 14.63MHz ~= 14.5MHz */
+#elif 0 /* VGA @ 50Hz 4:3 CVT *************************************************/
+#define LCD_BG_WIDTH  640U
+#define LCD_BG_HEIGHT 480U
+#define HDMI_HFP   16
+#define HDMI_HSYNC 64
+#define HDMI_HBP   80
+#define HDMI_VFP   3
+#define HDMI_VSYNC 4
+#define HDMI_VBP   10
+#define HDMI_IC16_CLKDIV 30 /* 20MHz ~= 19.75MHz */
+#elif 0 /* 720p 60Hz 16:9 DMT *************************************************/
+/* NOTE: Only for HDMI as layer must be inside the active display area (Will not work with MB1860 800x480 LCD) */
+#define LCD_BG_WIDTH 1280U
+#define LCD_BG_HEIGHT 720U
+#define HDMI_HFP   110
+#define HDMI_HSYNC 40
+#define HDMI_HBP   220
+#define HDMI_VFP   5
+#define HDMI_VSYNC 5
+#define HDMI_VBP   20
+#define HDMI_IC16_CLKDIV  9 /* 66.67MHz */
+// #define HDMI_IC16_CLKDIV  8 /* 75MHz ~= 74.25MHz may experience pixel noise issue if using non-shielded cable */
+#else /* WVGA @ 50Hz 15:9 CVT (STM32N6570-DK LCD native resolution) ***********/
 #define LCD_BG_WIDTH  800U
 #define LCD_BG_HEIGHT 480U
+#define HDMI_HFP   24
+#define HDMI_HSYNC 72
+#define HDMI_HBP   96
+#define HDMI_VFP   3
+#define HDMI_VSYNC 7
+#define HDMI_VBP   7
+#define HDMI_IC16_CLKDIV  24 /* 25MHz ~= 24.5MHz */
+#endif
 
 #define LCD_FG_WIDTH             320U
 #define LCD_FG_HEIGHT             50U
@@ -67,6 +113,8 @@ __attribute__ ((section (".psram_bss")))
 __attribute__ ((aligned (32)))
 uint8_t lcd_fg_buffer[LCD_FG_WIDTH * LCD_FG_HEIGHT * 2];
 
+static int is_hdmi;
+
 static void SystemClock_Config(void);
 static void Hardware_init(void);
 static void Camera_Init(void);
@@ -84,6 +132,12 @@ int main(void)
 
   Camera_Init();
 
+  is_hdmi = HDMI_Detect();
+  if (is_hdmi)
+  {
+    HDMI_Init();
+  }
+
   LCD_init();
 
   UTIL_LCD_SetLayer(LTDC_LAYER_2);
@@ -94,6 +148,7 @@ int main(void)
   UTIL_LCD_FillRect(0, 0, LCD_FG_WIDTH, LINE(2), 0x80202020UL); /* dark gray 50% opacity */
   UTIL_LCD_SetBackColor(0x80202020UL); /* dark gray 50% opacity */
 
+  UTIL_LCDEx_PrintfAtLine(0, "HDMI detected = %d", is_hdmi);
   UTIL_LCDEx_PrintfAtLine(1, "%dx%d", LCD_BG_WIDTH, LCD_BG_HEIGHT);
 
   int32_t ret = CMW_CAMERA_Start(DCMIPP_PIPE1, lcd_bg_buffer, CMW_MODE_CONTINUOUS);
@@ -179,6 +234,18 @@ static void LCD_init(void)
 
   BSP_LCD_Init(0, LCD_ORIENTATION_LANDSCAPE);
 
+  /* For hdmi fix LCD_DE gpio configuration (avoid LTDC_MspInit modifications) */
+  if (is_hdmi)
+  {
+    GPIO_InitTypeDef  gpio_init_structure = {0};
+    /* LCD_DE */
+    __HAL_RCC_GPIOG_CLK_ENABLE();
+    gpio_init_structure.Pin       = GPIO_PIN_13;
+    gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
+    gpio_init_structure.Alternate = GPIO_AF14_LCD;
+    HAL_GPIO_Init(GPIOG, &gpio_init_structure);
+  }
+
   /* Preview layer Init */
   LayerConfig.X0          = lcd_bg_area.X0;
   LayerConfig.Y0          = lcd_bg_area.Y0;
@@ -208,7 +275,9 @@ static void SystemClock_Config(void)
   /* Ensure VDDCORE=0.9V before increasing the system frequency */
   BSP_SMPS_Init(SMPS_VOLTAGE_OVERDRIVE);
 
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_NONE;
+  /* Oscillator config already done in bootrom */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
 
   /* PLL1 = 64 x 25 / 2 = 800MHz */
   RCC_OscInitStruct.PLL1.PLLState = RCC_PLL_ON;
@@ -237,14 +306,14 @@ static void SystemClock_Config(void)
   RCC_OscInitStruct.PLL3.PLLP1 = 1;
   RCC_OscInitStruct.PLL3.PLLP2 = 2;
 
-  /* PLL4 = (64 x 225 / 8) / (6 * 6) = 50 MHz */
+  /* PLL4 = 48 x 200 / 8 / 2 = 600MHz */
   RCC_OscInitStruct.PLL4.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL4.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL4.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL4.PLLM = 8;
   RCC_OscInitStruct.PLL4.PLLFractional = 0;
-  RCC_OscInitStruct.PLL4.PLLN = 225;
-  RCC_OscInitStruct.PLL4.PLLP1 = 6;
-  RCC_OscInitStruct.PLL4.PLLP2 = 6;
+  RCC_OscInitStruct.PLL4.PLLN = 200;
+  RCC_OscInitStruct.PLL4.PLLP1 = 2;
+  RCC_OscInitStruct.PLL4.PLLP2 = 1;
 
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -329,6 +398,74 @@ HAL_StatusTypeDef MX_DCMIPP_ClockConfig(DCMIPP_HandleTypeDef *hdcmipp)
   }
 
   return ret;
+}
+
+HAL_StatusTypeDef MX_LTDC_ClockConfig(LTDC_HandleTypeDef *hltdc)
+{
+  HAL_StatusTypeDef         status = HAL_OK;
+  RCC_PeriphCLKInitTypeDef RCC_PeriphCLKInitStruct = {0};
+
+  if (is_hdmi)
+  {
+    /* Configure LTDC clock to IC16 with PLL4 (600MHz) */
+    RCC_PeriphCLKInitStruct.PeriphClockSelection |= RCC_PERIPHCLK_LTDC;
+    RCC_PeriphCLKInitStruct.LtdcClockSelection = RCC_LTDCCLKSOURCE_IC16;
+    RCC_PeriphCLKInitStruct.ICSelection[RCC_IC16].ClockSelection = RCC_ICCLKSOURCE_PLL4;
+    RCC_PeriphCLKInitStruct.ICSelection[RCC_IC16].ClockDivider = HDMI_IC16_CLKDIV;
+  }
+  else
+  {
+    /* LTDC clock frequency = PLLLCDCLK = 25 Mhz (600 / 24) */
+    RCC_PeriphCLKInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
+    RCC_PeriphCLKInitStruct.LtdcClockSelection = RCC_LTDCCLKSOURCE_IC16;
+    RCC_PeriphCLKInitStruct.ICSelection[RCC_IC16].ClockSelection = RCC_ICCLKSOURCE_PLL4;
+    RCC_PeriphCLKInitStruct.ICSelection[RCC_IC16].ClockDivider = 24;
+  }
+
+  if (HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphCLKInitStruct) != HAL_OK)
+  {
+    status = HAL_ERROR;
+  }
+
+  return status;
+}
+
+HAL_StatusTypeDef MX_LTDC_Init(LTDC_HandleTypeDef *hltdc, uint32_t Width, uint32_t Height)
+{
+  hltdc->Instance = LTDC;
+  hltdc->Init.HSPolarity = LTDC_HSPOLARITY_AL;
+  hltdc->Init.VSPolarity = LTDC_VSPOLARITY_AL;
+  hltdc->Init.DEPolarity = LTDC_DEPOLARITY_AL;
+  hltdc->Init.PCPolarity = LTDC_PCPOLARITY_IPC;
+
+  if (is_hdmi)
+  {
+    hltdc->Init.HorizontalSync = HDMI_HSYNC - 1;
+    hltdc->Init.VerticalSync = HDMI_VSYNC - 1;
+    hltdc->Init.AccumulatedHBP = HDMI_HSYNC + HDMI_HBP - 1;
+    hltdc->Init.AccumulatedVBP = HDMI_VSYNC + HDMI_VBP - 1;
+    hltdc->Init.AccumulatedActiveW = LCD_BG_WIDTH + HDMI_HSYNC + HDMI_HBP - 1;
+    hltdc->Init.AccumulatedActiveH = LCD_BG_HEIGHT + HDMI_VSYNC + HDMI_VBP - 1;
+    hltdc->Init.TotalWidth = LCD_BG_WIDTH + HDMI_HSYNC + HDMI_HBP + HDMI_HFP - 1;
+    hltdc->Init.TotalHeigh = LCD_BG_HEIGHT + HDMI_VSYNC + HDMI_VBP + HDMI_VFP - 1;
+  }
+  else
+  {
+    hltdc->Init.HorizontalSync     = RK050HR18_HSYNC - 1;
+    hltdc->Init.AccumulatedHBP     = RK050HR18_HSYNC + RK050HR18_HBP - 1;
+    hltdc->Init.AccumulatedActiveW = RK050HR18_HSYNC + Width + RK050HR18_HBP -1;
+    hltdc->Init.TotalWidth         = RK050HR18_HSYNC + Width + RK050HR18_HBP + RK050HR18_HFP - 1;
+    hltdc->Init.VerticalSync       = RK050HR18_VSYNC - 1;
+    hltdc->Init.AccumulatedVBP     = RK050HR18_VSYNC + RK050HR18_VBP - 1;
+    hltdc->Init.AccumulatedActiveH = RK050HR18_VSYNC + Height + RK050HR18_VBP -1 ;
+    hltdc->Init.TotalHeigh         = RK050HR18_VSYNC + Height + RK050HR18_VBP + RK050HR18_VFP - 1;
+  }
+
+  hltdc->Init.Backcolor.Blue  = 0x0;
+  hltdc->Init.Backcolor.Green = 0x0;
+  hltdc->Init.Backcolor.Red   = 0x0;
+
+  return HAL_LTDC_Init(hltdc);
 }
 
 #ifdef  USE_FULL_ASSERT

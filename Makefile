@@ -25,6 +25,7 @@ BUILD_DIR = build
 ######################################
 # C sources
 C_SOURCES += Src/main.c
+C_SOURCES += Src/hdmi.c
 C_SOURCES += Src/syscalls.c
 C_SOURCES += Src/stm32_lcd_ex.c
 C_SOURCES += Src/stm32n6xx_it.c

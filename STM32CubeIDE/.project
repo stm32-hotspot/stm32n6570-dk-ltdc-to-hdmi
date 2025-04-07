@@ -42,6 +42,11 @@
 			<locationURI>PARENT-1-PROJECT_LOC/STM32Cube_FW_N6/Drivers/CMSIS/Device/ST/STM32N6xx/Source/Templates/gcc/startup_stm32n657xx_fsbl.s</locationURI>
 		</link>
 		<link>
+			<name>Application/hdmi.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Src/hdmi.c</locationURI>
+		</link>
+		<link>
 			<name>Application/main.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Src/main.c</locationURI>
