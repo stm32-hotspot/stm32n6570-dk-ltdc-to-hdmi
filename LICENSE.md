@@ -1,0 +1,16 @@
+| Component                             | Copyright                             | License
+|---------                              |---------                              |-------
+| CMSIS                                 | ARM Limited                           | [Apache-2.0](https://opensource.org/license/Apache-2.0)
+| STM32N6xx CMSIS Device                | ARM Limited, STMicroelectronics       | [Apache-2.0](https://opensource.org/license/Apache-2.0)
+| STM32N6xx HAL/LL Drivers              | STMicroelectronics                    | [BSD-3-Clause](https://opensource.org/license/BSD-3-Clause)
+| STM32N6570-DK BSP Drivers             | STMicroelectronics                    | [BSD-3-Clause](https://opensource.org/license/BSD-3-Clause)
+| BSP Component aps256xx                | STMicroelectronics                    | [BSD-3-Clause](https://opensource.org/license/BSD-3-Clause)
+| BSP Component Common                  | STMicroelectronics                    | [BSD-3-Clause](https://opensource.org/license/BSD-3-Clause)
+| BSP Component rk050hr18               | STMicroelectronics                    | [BSD-3-Clause](https://opensource.org/license/BSD-3-Clause)
+| Fonts                                 | STMicroelectronics                    | [BSD-3-Clause](https://opensource.org/license/BSD-3-Clause)
+| lcd                                   | STMicroelectronics                    | [BSD-3-Clause](https://opensource.org/license/BSD-3-Clause)
+| Middlewares/Camera_Middleware/sensors | STMicroelectronics                    | [BSD-3-Clause](https://opensource.org/license/BSD-3-Clause)
+| Middlewares/Camera_Middleware         | STMicroelectronics                    | [SLA0044](https://www.st.com/SLA0044)
+| Middlewares/ISP_Library               | LACROIX - Impulse, STMicroelectronics | [SLA0044](https://www.st.com/SLA0044)
+| Inc                                   | STMicroelectronics                    | [BSD-3-Clause](https://opensource.org/license/BSD-3-Clause)
+| Src                                   | STMicroelectronics                    | [BSD-3-Clause](https://opensource.org/license/BSD-3-Clause)
