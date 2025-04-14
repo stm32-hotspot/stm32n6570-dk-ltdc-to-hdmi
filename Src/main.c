@@ -216,6 +216,10 @@ static void Camera_Init(void)
   ret = CMW_CAMERA_Init(&cam_conf);
   assert(ret == CMW_ERROR_NONE);
 
+  /* Check output resolution is supported with current camera */
+  ret = cam_conf.width >= LCD_BG_WIDTH && cam_conf.height >= LCD_BG_HEIGHT;
+  assert(ret == 1); /* Camera not supported */
+
   dcmipp_conf.output_width = LCD_BG_WIDTH;
   dcmipp_conf.output_height = LCD_BG_HEIGHT;
   dcmipp_conf.output_format = DCMIPP_PIXEL_PACKER_FORMAT_RGB565_1;
