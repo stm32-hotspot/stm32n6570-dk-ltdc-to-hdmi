@@ -25,6 +25,22 @@ different HDMI display, the output resolution can be configured to **720p
   - [STEVAL-55G1MBI](https://www.st.com/en/evaluation-tools/steval-55g1mbi.html)
   - [STEVAL-66GYMAI1](https://www.st.com/en/evaluation-tools/steval-66gymai.html)
 
+## Hardware connection
+
+The LTDC to HDMI adapter board (MB1227) serves as a replacement for the LCD
+display board (MB1860). Follow these steps to connect the adapter:
+
+1. Remove the LCD Display Board: Unscrew the LCD display board (MB1860) from its position.
+2. Connect the Flat Cable:
+  Attach one end of the flat cable to the LCD socket CN3.
+  Connect the other end of the flat cable to the HDMI adapter board (MB1227) as
+  shown in the following picture. Ensure the cable orientation matches the
+  picture.
+
+Note the male-to-male adapter between the two flat cables to perform the required pin swap.
+
+![board](board.png)
+
 ## Software Environment
 
 - [STM32CubeIDE](https://www.st.com/content/st_com/en/products/development-tools/software-development-tools/stm32-software-development-tools/stm32-ides/stm32cubeide.html) (**STM32CubeIDE 1.17.0**)
